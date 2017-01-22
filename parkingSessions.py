@@ -28,8 +28,7 @@ def getVehicles(connection, user):
         for i in range(len(vehicleRego)-1):
             curr = []
             curr.append(vehicleRego[i])
-            if len(vehicleDescription) >= i:
-               curr.append(vehicleDescription[i])
+            curr.append(vehicleDescription[i])
             output.append(curr)
     return ["0", output]
         
