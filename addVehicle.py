@@ -14,5 +14,3 @@ def addVehicle(connection, user, rego, description , photo):
     #sqlquery = "UPDATE user_data SET photo = CONCAT(photo, {0})".foromat(photopath+chr(31))
     #a = connection.execute(sqlquery)
     return ['0']
-    
-    

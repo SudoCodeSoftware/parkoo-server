@@ -4,19 +4,20 @@ from MySQLdb import *
 import time
 from datetime import datetime
 
-def getActive(connection, user):
+def getActive(connection, user, active):
     sessionID = user['parkingSessions'].split(chr(31))
     response = []
     if sessionID != "":
-        for i in range(0, len(sessionID)):
+        for i in range(0, len(sessionID)-1):
             sqlquery = "SELECT * FROM parking_sessions WHERE sessionID = '{0}'".format(sessionID[i])
             result = connection.execute(sqlquery)
             result = connection.fetchone()
             curr = []
-            curr.append(result['address'])
-            curr.append(result['rego'])
-            curr.append(result['expiryTime'])
-            response.append(curr)
+            if active == "True":
+               if result["expiryTime"] > int(time.time()):
+                  response.append(result)
+            else:
+               response.append(result)
     return ['0', response]
         
 
