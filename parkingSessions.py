@@ -38,27 +38,25 @@ def createSession(connection, user, rego, coords, charge, CCToken):
     timestamp = int(time.time())
     now = datetime.now()
     timeSinceMidnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds() 
-    ''' 
     stripe.Charge.create(
           amount=int(charge),
           currency="aud",
           source=CCToken)
-    '''
     zone = getZone(connection, coords)
     pricing = zone[1]["timing"]
     for i in range(len(pricing)):
         pricing[i] = pricing[i].split('-')
         for j in range(len(pricing[i])):
             pricing[i][j] = pricing[i][j].split(":")
-            pricing[i][j] = pricing[i][j][0]*3600 + pricing[i][j][1]*60
+            pricing[i][j] = int(pricing[i][j][1])*3600 + int(pricing[i][j][0])*60
         if timeSinceMidnight > pricing[i][0] and timeSinceMidnight < pricing[i][1]:
-           zonePrice = zone["pricing"][i]
+           zonePrice = zone[1]["pricing"][i]
     parkTime = zonePrice
-    expiryTime = timestamp + (charge / zonePrice) 
-    sqlquery = "INSERT INTO parking_sessions (rego, coords, expiryTime, parkingZone) VALUES ({0}, {1}, {2}, {3})".format(rego, coords, expiryTime, zone)
+    expiryTime = timestamp + (int(charge) / int(zonePrice)) 
+    sqlquery = "INSERT INTO parking_sessions (rego, coords, expiryTime, parkingZone) VALUES ('{0}', '{1}', '{2}', '{3}')".format(rego, coords, expiryTime, zone[1]["id"])
     a = connection.execute(sqlquery)
     sessionID = connection.lastrowid
-    sqlquery = "UPDATE user_data SET parkingSessions = CONCAT(parkingSessions, {0}) WHERE user_id = '{1}'".format(str(sessionID)+chr(31), user['user_id'])
+    sqlquery = "UPDATE user_data SET parkingSessions = CONCAT(parkingSessions, '{0}') WHERE user_id = '{1}'".format(str(sessionID)+chr(31), user['user_id'])
     a = connection.execute(sqlquery)
     
     return ['0']
