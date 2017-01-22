@@ -24,11 +24,13 @@ def getVehicles(connection, user):
     vehicleRego = user['rego'].split(chr(31))
     vehicleDescription = user['description'].split(chr(31))
     output = []
-    for i in range(len(vehicleRego)-1):
-        curr = []
-        curr.append(vehicleRego[i])
-        curr.append(vehicleDescription[i])
-        output.append(curr)
+    if user["rego"] != "":
+        for i in range(len(vehicleRego)-1):
+            curr = []
+            curr.append(vehicleRego[i])
+            if len(vehicleDescription) >= i:
+               curr.append(vehicleDescription[i])
+            output.append(curr)
     return ["0", output]
         
     
@@ -41,7 +43,8 @@ def createSession(connection, user, rego, coords, charge, CCToken):
     stripe.Charge.create(
           amount=int(charge),
           currency="aud",
-          source=CCToken)
+          source=CCToken,
+          description="charge for "+user["email"])
     zone = getZone(connection, coords)
     pricing = zone[1]["timing"]
     for i in range(len(pricing)):
