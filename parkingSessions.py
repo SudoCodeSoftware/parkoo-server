@@ -12,12 +12,22 @@ def getActive(connection, user, active):
             sqlquery = "SELECT * FROM parking_sessions WHERE sessionID = '{0}'".format(sessionID[i])
             result = connection.execute(sqlquery)
             result = connection.fetchone()
-            curr = []
-            if active == "True":
-               if result["expiryTime"] > int(time.time()):
-                  response.append(result)
-            else:
-               response.append(result)
+            if  result != None:
+                curr = []
+                if active == "True":
+                   if int(result["expiryTime"]) > int(time.time()):
+                      '''
+                      curr.append(eval(result["coords"]))
+                      curr.append(result["expiryTime"])
+                      curr.append(result["rego"])
+                      response.append(curr)
+                      '''
+                      return ["0", "1"]
+                else:
+                   curr.append(eval(result["coords"]))
+                   curr.append(result["expiryTime"]) 
+                   curr.append(result["rego"]) 
+                   response.append(curr)
     return ['0', response]
         
 
