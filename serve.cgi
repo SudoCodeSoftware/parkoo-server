@@ -31,6 +31,10 @@ def handleRequest():
             output = signup(cursor,form.getvalue('fullname'),form.getvalue('email'),form.getvalue('mobileNum'),form.getvalue('password'))
         elif type == 'login':
             output = login(cursor, form.getvalue('email'),form.getvalue('password'))
+        elif type == 'verifyMobile1':
+            output = verifyMobile(cursor, form.getvalue('mobileNum'), '1', None, form.getvalue('email'), None)
+        elif type == 'verifyMobile2':
+            output = verifyMobile(cursor, form.getvalue('mobileNum'), '2', form.getvalue('fullname'), form.getvalue('email'), form.getvalue('password')) 
         else:
             sqlquery = "SELECT * FROM user_data WHERE accessToken = '{0}'".format(accessToken)
             accessResponse = cursor.execute(sqlquery)
@@ -38,13 +42,15 @@ def handleRequest():
             if accessResponse != 0:
                 accessToken = user['accessToken'].split(chr(31))
                 timestamp = int(time.time())
-                if accessToken[1] > timestamp:  
-                    if type == 'verifyMobile1':
-                        output = verifyMobile(cursor, user, None, '1')
-                    elif type == 'verifyMobile2':
-                        output = verifyMobile(cursor, user,form.getvalue('digits'), '2')
-                    elif type == 'addVehicle':
+                if accessToken[1] > timestamp:
+                    if type == 'addVehicle':
                         output = addVehicle(cursor, user ,form.getvalue('rego'), form.getvalue('description') , form.getvalue('photo'))
+                    elif type == 'editVehicle':
+                         output = editVehicle(cursor, user ,form.getvalue('rego'), form.getvalue('description') , form.getvalue('photo'))
+                    elif type =='deleteVehicle':
+                        output = deleteVehicle(cursor, user, form.getvalue('rego'))
+                    elif type == 'getCustomerInfo':
+                        output = getCustomerInfo(cursor, user)
                     elif type == 'getActive':
                         output = getActive(cursor, user, form.getvalue('active'))
                     elif type == 'createSession':
@@ -57,6 +63,8 @@ def handleRequest():
                         output = getZone(cursor, form.getvalue('coords'))
                     elif type == 'getVehicles':
                         output = getVehicles(cursor, user)
+                    elif type == 'createCustomer':
+                        output = createCustomer(cursor, user, form.getvalue('CCToken'),form.getvalue('addCC'))
 
                 else:
                     output = ['1', "out of time"]

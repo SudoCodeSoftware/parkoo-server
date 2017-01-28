@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import stripe
 from MySQLdb import *
+from signup import *
 import time
 from datetime import datetime
 
@@ -15,14 +16,13 @@ def getActive(connection, user, active):
             if  result != None:
                 curr = []
                 if active == "True":
+                   response = False
                    if int(result["expiryTime"]) > int(time.time()):
-                      '''
                       curr.append(eval(result["coords"]))
                       curr.append(result["expiryTime"])
                       curr.append(result["rego"])
                       response.append(curr)
-                      '''
-                      return ["0", "1"]
+                      return ["0", response]
                 else:
                    curr.append(eval(result["coords"]))
                    curr.append(result["expiryTime"]) 
@@ -50,10 +50,20 @@ def createSession(connection, user, rego, coords, charge, CCToken):
     timestamp = int(time.time())
     now = datetime.now()
     timeSinceMidnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds() 
-    stripe.Charge.create(
+    customerToken = user["customer_id"].split(chr(31))
+    if customerToken!= None and customerToken[1] == True:
+       stripe.Charge.create(
+          amount=int(charge),
+          currency="aud",
+          customer=customerToken[0],
+          receipt_email=user["email"],
+          description="charge for "+user["email"])
+    else:
+       stripe.Charge.create(
           amount=int(charge),
           currency="aud",
           source=CCToken,
+          receipt_email=user["email"],
           description="charge for "+user["email"])
     zone = getZone(connection, coords)
     pricing = zone[1]["timing"]
@@ -73,6 +83,7 @@ def createSession(connection, user, rego, coords, charge, CCToken):
     a = connection.execute(sqlquery)
     
     return ['0']
+
 def deleteSession(connection, user, rego):
     #delete a parking session
     sqlquery = "SELECT * FROM parking_sessions WHERE rego = {0}".format(rego)
