@@ -11,7 +11,8 @@ from signup import *
 from login import *
 from addVehicle import *
 from parkingSessions import *
-#from forgot import *
+from forgot import *
+
 cgitb.enable() 					    #Error checking I think?
 form = cgi.FieldStorage()			#Sets up getting post data
 
@@ -35,6 +36,10 @@ def handleRequest():
             output = verifyMobile(cursor, form.getvalue('mobileNum'), '1', None, form.getvalue('email'), None)
         elif type == 'verifyMobile2':
             output = verifyMobile(cursor, form.getvalue('mobileNum'), '2', form.getvalue('fullname'), form.getvalue('email'), form.getvalue('password')) 
+        elif type == 'forgotPassword':
+            output = forgotPassword(cursor, form.getvalue('email'))
+        elif type == 'resetPassword':
+            output = resetPassword(cursor, form.getvalue('accessToken'), form.getvalue('password'))
         else:
             sqlquery = "SELECT * FROM user_data WHERE accessToken = '{0}'".format(accessToken)
             accessResponse = cursor.execute(sqlquery)
@@ -54,18 +59,21 @@ def handleRequest():
                     elif type == 'getActive':
                         output = getActive(cursor, user, form.getvalue('active'))
                     elif type == 'createSession':
-                        output = createSession(cursor, user, form.getvalue('rego'), form.getvalue('coords'), form.getvalue('charge'), form.getvalue('CCToken'))
+                        output = createSession(cursor, user, form.getvalue('rego'), form.getvalue('coords'), form.getvalue('charge'), form.getvalue('CardID'))
                     elif type == 'deleteSession':
                         output = deleteSession(cursor, user, form.getvalue('rego'))
                     elif type == 'extendSession':
-                        output = extendSession(cursor, form.getvalue('rego'), form.getvalue('charge'), form.getvalue('CCToken'))
+                        output = extendSession(cursor, user, form.getvalue('sessionID') ,form.getvalue('charge'), form.getvalue('CardID'))
                     elif type == 'getZone':
                         output = getZone(cursor, form.getvalue('coords'))
                     elif type == 'getVehicles':
                         output = getVehicles(cursor, user)
                     elif type == 'createCustomer':
                         output = createCustomer(cursor, user, form.getvalue('CCToken'),form.getvalue('addCC'))
-
+                    elif type == 'forgotPassword':
+                        output = forgotPassword(connection, form.getvalue('email'))
+                    elif type == 'resetPassword':
+                        output = resetPassword(connection, form.getvalue('accessToken'), form.getvalue('password'))
                 else:
                     output = ['1', "out of time"]
             else:

@@ -45,6 +45,9 @@ def verifyMobile(connection, mobileNum, type, fullname, email, password):
                                         VALUES ('{0}', '{1}', '{2}','{3}', '{4}')""".format(fullname, email, hashedPassword, accessToken , mobileNum)
       a = connection.execute(sqlquery)
       sqlquery = "SELECT * FROM user_data where email = '{0}'".format(email)
+      connection.execute(sqlquery)
+      user = connection.fetchone()
+      createCustomer(connection, user, "", "")
       output =  ['0', accessToken]
       
 
@@ -57,8 +60,7 @@ def createCustomer(connection, user, CCToken, addCC):
   if addCC:
      customerToken = user["customer_id"].split(chr(31))
      cu = stripe.Customer.retrieve(customerToken[0])
-     cu.source = CCToken
-     cu.save()
+     cu.sources.create(source=CCToken)
      return ["0", customerToken]
   else:
       newCustomer = stripe.Customer.create(

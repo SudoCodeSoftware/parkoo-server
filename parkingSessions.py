@@ -16,17 +16,20 @@ def getActive(connection, user, active):
             if  result != None:
                 curr = []
                 if active == "True":
-                   response = False
                    if int(result["expiryTime"]) > int(time.time()):
                       curr.append(eval(result["coords"]))
+                      #curr.append(eval(result["startTime"]))
                       curr.append(result["expiryTime"])
                       curr.append(result["rego"])
+                      curr.append(result["sessionID"])
                       response.append(curr)
-                      return ["0", response]
                 else:
+                   #curr.append("Expiry: "+str(int(result["expiryTime"])-int(time.time())))  
                    curr.append(eval(result["coords"]))
+                   #curr.append(eval(result["startTime"]))
                    curr.append(result["expiryTime"]) 
                    curr.append(result["rego"]) 
+                   curr.append(result["sessionID"])
                    response.append(curr)
     return ['0', response]
         
@@ -44,45 +47,42 @@ def getVehicles(connection, user):
     return ["0", output]
         
     
-def createSession(connection, user, rego, coords, charge, CCToken):
+def createSession(connection, user, rego, coords, charge, CardID):
     #create a parking session
     stripe.api_key = "sk_test_ksiVjuhEkRActjgc0pjs242S"
     timestamp = int(time.time())
     now = datetime.now()
-    timeSinceMidnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds() 
-    customerToken = user["customer_id"].split(chr(31))
-    if customerToken!= None and customerToken[1] == True:
-       stripe.Charge.create(
-          amount=int(charge),
-          currency="aud",
-          customer=customerToken[0],
-          receipt_email=user["email"],
-          description="charge for "+user["email"])
-    else:
-       stripe.Charge.create(
-          amount=int(charge),
-          currency="aud",
-          source=CCToken,
-          receipt_email=user["email"],
-          description="charge for "+user["email"])
+    timeSinceMidnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
+    customerToken = user["customer_id"].split(chr(31)) 
+    cu = stripe.Customer.retrieve(customerToken[0])
+    cu.default_source = CardID
+    cu.save()
+    stripe.Charge.create(
+        amount=int(charge),
+        currency="aud",
+        customer = customerToken[0],
+        receipt_email=user["email"],
+        description="charge for "+user["email"])
     zone = getZone(connection, coords)
     pricing = zone[1]["timing"]
     for i in range(len(pricing)):
         pricing[i] = pricing[i].split('-')
         for j in range(len(pricing[i])):
             pricing[i][j] = pricing[i][j].split(":")
-            pricing[i][j] = int(pricing[i][j][1])*3600 + int(pricing[i][j][0])*60
+            pricing[i][j] = eval(pricing[i][j][1])*3600 + eval(pricing[i][j][0])*60
         if timeSinceMidnight > pricing[i][0] and timeSinceMidnight < pricing[i][1]:
            zonePrice = zone[1]["pricing"][i]
     parkTime = zonePrice
-    expiryTime = timestamp + (int(charge) / int(zonePrice)) 
-    sqlquery = "INSERT INTO parking_sessions (rego, coords, expiryTime, parkingZone) VALUES ('{0}', '{1}', '{2}', '{3}')".format(rego, coords, expiryTime, zone[1]["id"])
+    chargeDollars = float(charge)/100
+    duration  = (chargeDollars / zonePrice)*3600 
+    expiryTime = timestamp + duration
+    sqlquery = "INSERT INTO parking_sessions (rego, coords, expiryTime, duration, startTime,  parkingZone) VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}')".format(rego, coords, expiryTime, duration, timestamp, zone[1]["id"])
     a = connection.execute(sqlquery)
     sessionID = connection.lastrowid
     sqlquery = "UPDATE user_data SET parkingSessions = CONCAT(parkingSessions, '{0}') WHERE user_id = '{1}'".format(str(sessionID)+chr(31), user['user_id'])
     a = connection.execute(sqlquery)
     
-    return ['0']
+    return ['0', charge, chargeDollars, duration, zonePrice]
 
 def deleteSession(connection, user, rego):
     #delete a parking session
@@ -102,9 +102,39 @@ def deleteSession(connection, user, rego):
     a = connection.execute(sqlquery)
     
     return ['0']
-def extendSession(connection, rego, charge, CCToken):
+def extendSession(connection, user, sessionID, charge, CardID):
     #extend the time left on a parking session
-    sqlquery = "UPDATE parking_sessions SET expiryTime = {0} WHERE rego = {1}".format(expiryTime, rego)
+    stripe.api_key = "sk_test_ksiVjuhEkRActjgc0pjs242S"
+    customerToken = user["customer_id"].split(chr(31))
+    cu = stripe.Customer.retrieve(customerToken[0])
+    cu.default_source = CardID
+    cu.save()
+    stripe.Charge.create(
+        amount=int(charge),
+        currency="aud",
+        customer = customerToken[0],
+        receipt_email=user["email"],
+        description="charge for "+user["email"])
+    sqlquery = "SELECT * FROM parking_sessions WHERE sessionID = {0}".format(sessionID)
+    connection.execute(sqlquery)
+    session =  connection.fetchone()
+    sqlquery = "SELECT * FROM zones WHERE id = '{0}'".format(session["parkingZone"])
+    connection.execute(sqlquery)
+    zone = connection.fetchone()
+    now = datetime.now()
+    timeSinceMidnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
+    pricing = eval(zone["timing"])
+    for i in range(len(pricing)):
+        pricing[i] = pricing[i].split('-')
+        for j in range(len(pricing[i])):
+            pricing[i][j] = pricing[i][j].split(":")
+            pricing[i][j] = int(pricing[i][j][1])*3600 + int(pricing[i][j][0])*60
+            if timeSinceMidnight > pricing[i][0] and timeSinceMidnight < pricing[i][1]:
+               zonePrice = eval(zone["pricing"])[i]
+    chargeDollars = float(charge)/100
+    duration  = (chargeDollars / zonePrice)*3600  
+    expiryTime = float(session["expiryTime"]) + duration 
+    sqlquery = "UPDATE parking_sessions SET expiryTime = {0} WHERE sessionID = {1}".format(expiryTime , sessionID)
     a = connection.execute(sqlquery)
     
     return ['0']
